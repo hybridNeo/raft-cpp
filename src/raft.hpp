@@ -1,0 +1,2 @@
+#define LOWER_TIMEOUT 300
+#define UPPER_TIMEOUT 800

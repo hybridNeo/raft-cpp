@@ -13,6 +13,10 @@ all: ./../out/node
 	mkdir -p ./../out
 	g++ -std=c++11 -c com.cpp -o ./../out/com.o
 
+./../out/raft.o: raft.hpp raft.cpp
+	mkdir -p ./../out
+	g++ -std=c++11 -c raft.cpp -o ./../out/raft.o
+
 
 clean:
 	rm -rf ./../out

@@ -90,19 +90,22 @@ void update_nodes(){
 std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
 	std::vector<std::string> vs1;
     boost::split(vs1, request , boost::is_any_of(";"));
+    std::string ret = "OK";
     if(vs1[0] == "JOIN"){
     	info_m.lock();
     	info.node_list_.push_back(node(r_ep.address().to_string(),std::to_string(r_ep.port())));
     	info_m.unlock();
-    	std::thread t(update_nodes);
+    	update_nodes();
     	return info.serialize();
     }else if(vs1[0] == "UPDATE"){
     	std::string req = request.substr(8);
     	info.deserialize(req);
+
     }
     else if(vs1[0] == "HEARTBEAT"){
 
     }
+    return ret;
 }
 
 

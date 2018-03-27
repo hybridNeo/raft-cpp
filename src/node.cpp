@@ -3,9 +3,11 @@
 #include <boost/asio.hpp>
 #include "com.hpp"
 #include <mutex>
+#include "raft.hpp"
 #include <thread>
 #include <boost/algorithm/string.hpp>
-
+#include <chrono>
+#include <ctime>
 
 class node{
 public:
@@ -16,7 +18,10 @@ public:
 	:port_(port),ip_addr_(ip_addr){
 
 	}
-
+	node(){
+		port_ = "";
+		ip_addr_ = "";
+	}
 	friend bool operator==(const node& lhs, const node& rhs){
 		if(lhs.ip_addr_ == rhs.ip_addr_ && lhs.port_ == rhs.port_ ){
 			return true;
@@ -30,11 +35,21 @@ public:
 
 };
 
+class election{
+public:
+	int num_votes_;
+};
 
 class node_info{
 public:
-	std::string leader_;
 	std::vector<node> node_list_;
+	bool vote_available_;
+	std::mutex vote_m_;
+	node cur_;
+	node leader_;
+	node_info(){
+		vote_available_ = true;
+	}
 	std::string serialize(){
 		std::string ret = "";
 		for(node n : node_list_){
@@ -49,7 +64,8 @@ public:
 	void deserialize(std::string str){
 		std::vector<std::string> vs1;
     	boost::split(vs1, str , boost::is_any_of(";"));
-    	for(std::string s : vs1 ){
+    	for( int i=0; i < vs1.size()-1;++i ){
+    		std::string s = vs1[i];
     		std::vector<std::string> vs2;
     		boost::split(vs2, s , boost::is_any_of(","));
  			bool found = false;
@@ -93,13 +109,26 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
     std::string ret = "OK";
     if(vs1[0] == "JOIN"){
     	info_m.lock();
-    	info.node_list_.push_back(node(r_ep.address().to_string(),std::to_string(r_ep.port())));
+    	info.node_list_.push_back(node(r_ep.address().to_string(),vs1[1]));
     	info_m.unlock();
-    	update_nodes();
+    	std::thread t(update_nodes);
+    	t.detach();
+    	//std::cout << "info : " << info.serialize();
     	return info.serialize();
     }else if(vs1[0] == "UPDATE"){
-    	std::string req = request.substr(8);
+    	std::string req = request.substr(7);
     	info.deserialize(req);
+
+    }else if(vs1[0] == "ELECT"){
+    	info.vote_m_.lock();
+    	if(info.vote_available_ == true){
+    		info.vote_available_ = false;
+    		info.vote_m_.unlock();
+    		return "OK";
+    	}else{
+    		info.vote_m_.unlock();
+    		return "NOK";
+    	}
 
     }
     else if(vs1[0] == "HEARTBEAT"){
@@ -127,21 +156,61 @@ void heartbeat_server(int port){
     }
 }
 void start_node(std::string u_ip_addr, std::string u_port, std::string i_ip_addr, std::string i_port){
-	std::cout << "here\n";
 	if(u_ip_addr == i_ip_addr && u_port == i_port){
 		//case where this is the first node
 		info.node_list_.push_back(node(u_ip_addr,u_port));
-		std::cout << "here\n";
 	}else{
 		std::string response;
-		std::string message = "JOIN";
+		std::string message = "JOIN;" + u_port;
 		try{
 	        udp_sendmsg(message, i_ip_addr, std::stoi(i_port), response);
 	    }catch(boost::system::system_error const& e){
 	    	std::cout << "Error \n";
 	    }
+	    //std::cout << "Response is " << response << std::endl;
 	    info.deserialize(response);
 	}
+}
+
+void start_election(){
+	std::string message = "ELECT;" + info.cur_.ip_addr_ + info.cur_.port_ ;	
+	int num_votes = 0;
+	for(int i =0; i < info.node_list_.size();++i){
+		std::string response;
+		udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);
+		if(response == "OK"){
+			num_votes++;
+		}
+	}
+	std::cout << "num votes is " << num_votes << "\n";
+
+}
+
+void send_heartbeat(){
+
+}
+
+void start_raft(){
+	srand (time(NULL));
+	int sleep_amt = LOWER_TIMEOUT + (rand() % (UPPER_TIMEOUT - LOWER_TIMEOUT));
+	std::cout << "Sleeping for " << sleep_amt << "milliseconds \n";
+	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_amt));
+	std::cout << "here1\n";
+	if(info.node_list_.size() >= NODE_THRESHOLD){
+		info.vote_m_.lock();
+		if(info.vote_available_ == true){
+			std::cout << "here2\n";
+			info.vote_available_ = false;
+			info.vote_m_.unlock();
+			start_election();
+
+		}else{
+			send_heartbeat();
+			info.vote_m_.unlock();
+		}
+		
+	}
+	start_raft();
 }
 
 int main(int argc, char* argv[]){
@@ -156,8 +225,11 @@ int main(int argc, char* argv[]){
 	u_port = argv[2];
 	i_ip_addr = argv[3];
 	i_port = argv[4];
+	info.cur_.port_ = std::stoi(u_port);
+	info.cur_.ip_addr_ = u_ip_addr;
 	std::thread t1(heartbeat_server,stoi(u_port));
 	std::thread t2(start_node, u_ip_addr,u_port,i_ip_addr,i_port);
+	std::thread t3(start_raft);
 	while(1){
 		int choice;
 		std::cout << "Type 1 to print member list \n" << std::endl;

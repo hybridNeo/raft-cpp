@@ -1,3 +1,4 @@
 #define LOWER_TIMEOUT 600
 #define UPPER_TIMEOUT 3000
+#define HB_FREQ 100
 #define NODE_THRESHOLD 5

@@ -44,11 +44,13 @@ class node_info{
 public:
 	std::vector<node> node_list_;
 	bool vote_available_;
+	bool leader_tout_;
 	std::mutex vote_m_;
 	node cur_;
 	node leader_;
 	node_info(){
 		vote_available_ = true;
+		leader_tout_ = true;
 	}
 	std::string serialize(){
 		std::string ret = "";
@@ -130,6 +132,9 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
     		return "NOK";
     	}
 
+    }else if(vs1[0] == "LEADER"){
+    	info.leader_tout_ = false;
+    	std::cout << "heartbeat recevied\n";
     }
     else if(vs1[0] == "HEARTBEAT"){
 
@@ -172,6 +177,18 @@ void start_node(std::string u_ip_addr, std::string u_port, std::string i_ip_addr
 	}
 }
 
+void leader_fn(){
+	while(1){
+		for(int i=0 ; i < info.node_list_.size();++i){
+			std::string response;
+			std::string message = "LEADER;" ;
+			udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(HB_FREQ));
+	}
+	
+
+}
 void start_election(){
 	std::string message = "ELECT;" + info.cur_.ip_addr_ + info.cur_.port_ ;	
 	int num_votes = 0;
@@ -182,6 +199,11 @@ void start_election(){
 			num_votes++;
 		}
 	}
+	if(num_votes+1 > (info.node_list_.size()/2)){
+		std::cout << "Leader Elected \n";
+		std::thread t(leader_fn);
+		t.detach();
+	}
 	std::cout << "num votes is " << num_votes << "\n";
 
 }
@@ -191,12 +213,13 @@ void send_heartbeat(){
 }
 
 void start_raft(){
-	srand (time(NULL));
+	
+	info.leader_tout_ = true;
 	int sleep_amt = LOWER_TIMEOUT + (rand() % (UPPER_TIMEOUT - LOWER_TIMEOUT));
 	std::cout << "Sleeping for " << sleep_amt << "milliseconds \n";
 	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_amt));
 	std::cout << "here1\n";
-	if(info.node_list_.size() >= NODE_THRESHOLD){
+	if(info.node_list_.size() >= NODE_THRESHOLD && info.leader_tout_ == true){
 		info.vote_m_.lock();
 		if(info.vote_available_ == true){
 			std::cout << "here2\n";
@@ -210,10 +233,12 @@ void start_raft(){
 		}
 		
 	}
+	info.vote_available_ = true;
 	start_raft();
 }
 
 int main(int argc, char* argv[]){
+	srand (time(NULL));
 	std::cout << "starting node \n";
 	if(argc < 5)
 	{

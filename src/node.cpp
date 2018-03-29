@@ -97,8 +97,14 @@ void update_nodes(){
 		std::string message = "UPDATE;" + info.serialize();
 		std::string response;
 	    try{
-	    	if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ && info.node_list_[i].port_ != info.cur_.port_)
-	        	udp_sendmsg(message, info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_), response);
+	    	if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ && info.node_list_[i].port_ != info.cur_.port_){
+	    		try{
+	        		udp_sendmsg(message, info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_), response);
+	    		}
+	    		catch(std::exception& e){
+
+				}
+	    	}
 	    }catch(boost::system::system_error const& e){
 	    	std::cout << "Error sending message\n";
 	    }
@@ -212,7 +218,15 @@ void leader_fn(){
 		for(int i=0 ; i < info.node_list_.size();++i){
 			std::string response;
 			std::string message = "LEADER;" ;
-			udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);
+			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ && info.node_list_[i].port_ != info.cur_.port_){
+				try{
+					udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);	
+				}
+				catch(std::exception& e){
+
+				}
+				
+			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(HB_FREQ));
 	}
@@ -224,7 +238,13 @@ void start_election(){
 	int num_votes = 0;
 	for(int i =0; i < info.node_list_.size();++i){
 		std::string response;
-		udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);
+		try{
+			udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);
+		}
+		catch(std::exception& e){
+
+		}
+		
 		if(response == "OK"){
 			num_votes++;
 		}
@@ -272,7 +292,7 @@ int main(int argc, char* argv[]){
 	std::cout << "starting node \n";
 	if(argc < 5)
 	{
-		std::cout << "Invalid parameters, enter user ip and port and introducer ip and port";
+		std::cout << "Invalid parameters, enter user ip and port and introducer ip and port\n";
 		return -1;
 	}
 	std::string u_ip_addr,u_port,i_ip_addr, i_port;

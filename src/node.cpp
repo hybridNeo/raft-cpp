@@ -47,10 +47,14 @@ public:
 	bool leader_tout_;
 	std::mutex vote_m_;
 	node cur_;
+	log_entry node_log_;
+	int term_;
 	node leader_;
+	
 	node_info(){
 		vote_available_ = true;
 		leader_tout_ = true;
+		term_ = 0;
 	}
 	std::string serialize(){
 		std::string ret = "";
@@ -93,11 +97,22 @@ void update_nodes(){
 		std::string message = "UPDATE;" + info.serialize();
 		std::string response;
 	    try{
-	        udp_sendmsg(message, info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_), response);
+	    	if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ && info.node_list_[i].port_ != info.cur_.port_)
+	        	udp_sendmsg(message, info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_), response);
 	    }catch(boost::system::system_error const& e){
 	    	std::cout << "Error sending message\n";
 	    }
 	} 
+}
+
+/*
+ * @param string request
+ * @param string r_ep
+ */
+std::string api_handler(std::string& request, udp::endpoint r_ep){
+	std::vector<std::string> vs1;
+    boost::split(vs1, request , boost::is_any_of(";"));
+
 }
 
 /*
@@ -177,7 +192,22 @@ void start_node(std::string u_ip_addr, std::string u_port, std::string i_ip_addr
 	}
 }
 
+void api_server(){
+    try{
+
+        boost::asio::io_service io_service;
+        udp_server server(io_service, API_PORT, api_handler);
+        std::cout << "[heartbeat Server] Started    \n";
+        io_service.run();
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+    }
+}
+
 void leader_fn(){
+
 	while(1){
 		for(int i=0 ; i < info.node_list_.size();++i){
 			std::string response;

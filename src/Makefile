@@ -1,23 +1,26 @@
-all: ./../out/node
+
 
 CFLAGS = -g -std=c++11
+OUTPUT_DIR =  ./../out
 
-./../out/node:  ./../out/com.o ./../out/node.o 
-	mkdir  -p ./../out
-	g++ $(CFLAGS) ./../out/node.o ./../out/com.o -o ./../out/node -lboost_system -pthread
+all: $(OUTPUT_DIR)/node
 
-./../out/node.o: node.cpp
-	mkdir  -p ./../out
-	g++ $(CFLAGS) -c node.cpp -o ./../out/node.o
+$(OUTPUT_DIR)/node:  $(OUTPUT_DIR)/com.o $(OUTPUT_DIR)/node.o $(OUTPUT_DIR)/raft.o
+	mkdir  -p $(OUTPUT_DIR)
+	g++ $(CFLAGS) $(OUTPUT_DIR)/node.o $(OUTPUT_DIR)/com.o -o $(OUTPUT_DIR)/node -lboost_system -pthread
 
-./../out/com.o: com.hpp com.cpp 
-	mkdir -p ./../out
-	g++ $(CFLAGS) -c com.cpp -o ./../out/com.o
+$(OUTPUT_DIR)/node.o: node.cpp
+	mkdir  -p $(OUTPUT_DIR)
+	g++ $(CFLAGS) -c node.cpp -o $(OUTPUT_DIR)/node.o
 
-./../out/raft.o: raft.hpp raft.cpp
-	mkdir -p ./../out
-	g++ $(CFLAGS) -c raft.cpp -o ./../out/raft.o
+$(OUTPUT_DIR)/com.o: com.hpp com.cpp 
+	mkdir -p $(OUTPUT_DIR)
+	g++ $(CFLAGS) -c com.cpp -o $(OUTPUT_DIR)/com.o
+
+$(OUTPUT_DIR)/raft.o: raft.hpp 
+	mkdir -p $(OUTPUT_DIR)
+	g++ $(CFLAGS) -c raft.hpp -o $(OUTPUT_DIR)/raft.o
 
 
 clean:
-	rm -rf ./../out
+	rm -rf $(OUTPUT_DIR)

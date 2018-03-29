@@ -278,6 +278,7 @@ void start_raft(){
 			info.vote_available_ = false;
 			info.vote_m_.unlock();
 			start_election();
+			return;
 
 		}else{
 			send_heartbeat();

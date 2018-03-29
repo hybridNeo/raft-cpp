@@ -234,6 +234,33 @@ void leader_fn(){
 
 }
 
+void start_raft(){
+	
+	info.leader_tout_ = true;
+	int sleep_amt = LOWER_TIMEOUT + (rand() % (UPPER_TIMEOUT - LOWER_TIMEOUT));
+	std::cout << "Sleeping for " << sleep_amt << "milliseconds \n";
+	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_amt));
+	std::cout << "here1\n";
+	if(info.node_list_.size() >= NODE_THRESHOLD && info.leader_tout_ == true){
+		info.vote_m_.lock();
+		if(info.vote_available_ == true){
+			std::cout << "here2\n";
+			info.vote_available_ = false;
+			info.vote_m_.unlock();
+			start_election();
+			return;
+
+		}else{
+			//send_heartbeat();
+			info.vote_m_.unlock();
+		}
+		
+	}
+	info.vote_m_.lock();
+	info.vote_available_ = true;
+	info.vote_m_.unlock();
+	start_raft();
+}
 
 void start_election(){
 	std::string message = "ELECT;" + info.cur_.ip_addr_ + ";" + info.cur_.port_ ;	
@@ -255,6 +282,8 @@ void start_election(){
 		std::cout << "Leader Elected \n";
 		std::thread t(leader_fn);
 		t.detach();
+	}else{
+		start_raft();
 	}
 	std::cout << "num votes is " << num_votes << "\n";
 
@@ -264,31 +293,7 @@ void send_heartbeat(){
 
 }
 
-void start_raft(){
-	
-	info.leader_tout_ = true;
-	int sleep_amt = LOWER_TIMEOUT + (rand() % (UPPER_TIMEOUT - LOWER_TIMEOUT));
-	std::cout << "Sleeping for " << sleep_amt << "milliseconds \n";
-	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_amt));
-	std::cout << "here1\n";
-	if(info.node_list_.size() >= NODE_THRESHOLD && info.leader_tout_ == true){
-		info.vote_m_.lock();
-		if(info.vote_available_ == true){
-			std::cout << "here2\n";
-			info.vote_available_ = false;
-			info.vote_m_.unlock();
-			start_election();
-			return;
 
-		}else{
-			send_heartbeat();
-			info.vote_m_.unlock();
-		}
-		
-	}
-	info.vote_available_ = true;
-	start_raft();
-}
 
 int main(int argc, char* argv[]){
 	srand (time(NULL));

@@ -7,7 +7,8 @@
 #define API_PORT 4040
 #define NODE_THRESHOLD 5
 
-
+void start_raft();
+void start_election();
 //TYPES OF REQUESTS
 
 

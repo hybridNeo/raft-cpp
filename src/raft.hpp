@@ -3,7 +3,7 @@
 
 #define LOWER_TIMEOUT 3000
 #define UPPER_TIMEOUT 23000
-#define HB_FREQ 1000
+#define HB_FREQ 500
 #define API_PORT 4040
 #define NODE_THRESHOLD 5
 

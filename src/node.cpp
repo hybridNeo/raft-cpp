@@ -211,20 +211,21 @@ void api_server(){
         std::cerr << e.what() << std::endl;
     }
 }
+void send_heartbeat(std::string message,std::string ip, int port){
+	std::string response;
+	udp_sendmsg(message,ip,port,response);	
+	//t.detach();
+}
 
 void leader_fn(){
 
 	while(1){
 		for(int i=0 ; i < info.node_list_.size();++i){
-			std::string response;
+			
 			std::string message = "LEADER;" ;
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ && info.node_list_[i].port_ != info.cur_.port_){
-				try{
-					udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);	
-				}
-				catch(std::exception& e){
-
-				}
+				std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
+				std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	
 				
 			}
 		}
@@ -289,9 +290,6 @@ void start_election(){
 
 }
 
-void send_heartbeat(){
-
-}
 
 
 

@@ -226,7 +226,7 @@ void leader_fn(){
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ && info.node_list_[i].port_ != info.cur_.port_){
 				std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
 				std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	
-				
+				t.detach();
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(HB_FREQ));

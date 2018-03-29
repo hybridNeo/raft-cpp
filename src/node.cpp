@@ -263,22 +263,34 @@ void start_raft(){
 	start_raft();
 }
 
-void start_election(){
-	std::string message = "ELECT;" + info.cur_.ip_addr_ + ";" + info.cur_.port_ ;	
-	int num_votes = 0;
-	for(int i =0; i < info.node_list_.size();++i){
-		std::string response;
-		try{
-			udp_sendmsg(message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_),response);
-		}
-		catch(std::exception& e){
-
-		}
-		
-		if(response == "OK"){
-			num_votes++;
-		}
+int num_votes;
+std::mutex nv_m;
+void get_vote( std::string ip, int port){
+	std::string message = "ELECT;" + info.cur_.ip_addr_ + ";" + info.cur_.port_ ;
+	std::string response;
+	try{
+		udp_sendmsg(message,ip,port,response);
 	}
+	catch(std::exception& e){
+		std::cout << "Unable to contact host " << "\n";
+	}
+	
+	if(response == "OK"){
+		nv_m.lock();
+		num_votes++;
+		nv_m.unlock();
+	}
+}
+
+
+void start_election(){
+	num_votes = 0;
+
+	for(int i =0; i < info.node_list_.size();++i){
+		std::thread s(get_vote, info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));
+		s.detach();
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(VOTE_TIME));
 	if(num_votes+1 > (info.node_list_.size()/2)){
 		std::cout << "Leader Elected \n";
 		std::thread t(leader_fn);

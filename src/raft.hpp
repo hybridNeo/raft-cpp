@@ -5,6 +5,7 @@
 #define UPPER_TIMEOUT 23000
 #define HB_FREQ 500
 #define API_PORT 4040
+#define VOTE_TIME 300
 #define NODE_THRESHOLD 5
 
 void start_raft();

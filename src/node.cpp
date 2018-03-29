@@ -233,8 +233,10 @@ void leader_fn(){
 	
 
 }
+
+
 void start_election(){
-	std::string message = "ELECT;" + info.cur_.ip_addr_ + info.cur_.port_ ;	
+	std::string message = "ELECT;" + info.cur_.ip_addr_ + ";" + info.cur_.port_ ;	
 	int num_votes = 0;
 	for(int i =0; i < info.node_list_.size();++i){
 		std::string response;
@@ -300,7 +302,7 @@ int main(int argc, char* argv[]){
 	u_port = argv[2];
 	i_ip_addr = argv[3];
 	i_port = argv[4];
-	info.cur_.port_ = std::stoi(u_port);
+	info.cur_.port_ = u_port;
 	info.cur_.ip_addr_ = u_ip_addr;
 	std::thread t1(heartbeat_server,stoi(u_port));
 	std::thread t2(start_node, u_ip_addr,u_port,i_ip_addr,i_port);

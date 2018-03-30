@@ -35,10 +35,6 @@ public:
 
 };
 
-class election{
-public:
-	int num_votes_;
-};
 
 class node_info{
 public:
@@ -47,7 +43,6 @@ public:
 	bool leader_tout_;
 	std::mutex vote_m_;
 	node cur_;
-	log_entry node_log_;
 	int term_;
 	node leader_;
 	
@@ -118,7 +113,12 @@ void update_nodes(){
 std::string api_handler(std::string& request, udp::endpoint r_ep){
 	std::vector<std::string> vs1;
     boost::split(vs1, request , boost::is_any_of(";"));
+    std::cout << "Request is " << request << std::endl ; 
+    if( vs1[0] == "SET" && vs1.size() >= 3){
+    	log_entry l(SET,vs1[1],vs1[2]);
 
+    }
+    return "OK";
 }
 
 /*
@@ -203,7 +203,7 @@ void api_server(){
 
         boost::asio::io_service io_service;
         udp_server server(io_service, API_PORT, api_handler);
-        std::cout << "[heartbeat Server] Started    \n";
+        std::cout << "[API Server] Started on port "  << API_PORT <<  " \n";
         io_service.run();
     }
     catch (std::exception& e)
@@ -218,13 +218,13 @@ void send_heartbeat(std::string message,std::string ip, int port){
 }
 
 void leader_fn(){
-
+	std::thread api_t(api_server);
 	while(1){
 		for(int i=0 ; i < info.node_list_.size();++i){
 			
 			std::string message = "LEADER;" ;
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ || info.node_list_[i].port_ != info.cur_.port_){
-				std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
+				//std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
 				std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	
 				t.detach();
 			}

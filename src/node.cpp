@@ -45,7 +45,7 @@ public:
 	node cur_;
 	int term_;
 	node leader_;
-	
+	log_t log_;
 	node_info(){
 		vote_available_ = true;
 		leader_tout_ = true;
@@ -114,9 +114,14 @@ std::string api_handler(std::string& request, udp::endpoint r_ep){
 	std::vector<std::string> vs1;
     boost::split(vs1, request , boost::is_any_of(";"));
     std::cout << "Request is " << request << std::endl ; 
+    
     if( vs1[0] == "SET" && vs1.size() >= 3){
     	log_entry l(SET,vs1[1],vs1[2]);
+    	int id = info.log_.size();
+    	info.log_.push_back(l);
+    	while(info.log_[id].committed_ == false){
 
+    	}
     }
     return "OK";
 }
@@ -156,6 +161,7 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
     }else if(vs1[0] == "LEADER"){
     	info.leader_tout_ = false;
     	std::cout << "heartbeat recevied\n";
+    	std::cout << request << "\n";
     }
     else if(vs1[0] == "HEARTBEAT"){
 
@@ -221,8 +227,8 @@ void leader_fn(){
 	std::thread api_t(api_server);
 	while(1){
 		for(int i=0 ; i < info.node_list_.size();++i){
-			
-			std::string message = "LEADER;" ;
+		
+			std::string message = "LEADER;" ;//+ info.log_.serialize() ;
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ || info.node_list_[i].port_ != info.cur_.port_){
 				//std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
 				std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	

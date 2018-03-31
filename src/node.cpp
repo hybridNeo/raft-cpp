@@ -228,7 +228,7 @@ void leader_fn(){
 	while(1){
 		for(int i=0 ; i < info.node_list_.size();++i){
 		
-			std::string message = "LEADER;" ;//+ info.log_.serialize() ;
+			std::string message = "LEADER;" + info.log_.serialize() ;
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ || info.node_list_[i].port_ != info.cur_.port_){
 				//std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
 				std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	

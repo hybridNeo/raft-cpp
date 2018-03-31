@@ -57,7 +57,7 @@ class log_t : public std::vector<log_entry>{
 	int cmt_cnt_;
 	int st_cnt_;
 	public:
-	log_t(){
+	log_t() : std::vector<log_entry>() {
 		st_cnt_ = 0;
 		cmt_cnt_ = 0;
 	}
@@ -67,5 +67,6 @@ class log_t : public std::vector<log_entry>{
 
 			res += std::vector<log_entry>::operator[](i).serialize()  + ";";
 		}
+		return res;
 	}
 };

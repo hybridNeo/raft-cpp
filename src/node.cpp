@@ -161,11 +161,28 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
     }else if(vs1[0] == "LEADER"){
     	info.leader_tout_ = false;
     	std::cout << "heartbeat recevied\n";
-    	std::cout << request << "\n";
-    }
-    else if(vs1[0] == "HEARTBEAT"){
+    	info.term_ = max(info.term_,std::stoi(vs1[1]));
+    	if(info.term_ > std::stoi(vs1[1])){
+    		//ignore packet
+    		return "NOK";
+    	}else{
+    		std::string r_log = request.substr(vs1[0].size()+vs1[1].size() +2);
+    		std::cout << "rlog:" << r_log;
+    		log_t new_log(r_log);
+    		info.log_ = new_log;
+    		if(info.log_.st_cnt_ > info.log_.cmt_cnt_){
+    			//execute
 
+    		}else if(info.log_.st_cnt_ == info.log_.size()){
+
+    		}
+    		else{
+    			info.log_.st_cnt_ = info.log_.size();
+    		}
+    	}
+    	
     }
+  
     return ret;
 }
 
@@ -217,23 +234,62 @@ void api_server(){
         std::cerr << e.what() << std::endl;
     }
 }
+
+
 void send_heartbeat(std::string message,std::string ip, int port){
 	std::string response;
-	udp_sendmsg(message,ip,port,response);	
+	
+	udp_sendmsg(message,ip,port,response);
+	
 	//t.detach();
 }
 
+void f_wrapper(std::string message,std::string ip, int port)
+{
+    std::mutex m;
+    std::condition_variable cv;
+
+    std::thread t([&m, &cv, message,ip, port]() 
+    {
+        send_heartbeat(message,ip,port);
+        cv.notify_one();
+    });
+
+    t.detach();
+
+    {
+        std::unique_lock<std::mutex> l(m);
+        if(cv.wait_for(l, std::chrono::milliseconds(1000)) == std::cv_status::timeout) 
+            throw std::runtime_error("Timeout");
+    }
+
+}
+
+
 void leader_fn(){
 	std::thread api_t(api_server);
+	info.term_++;
 	while(1){
+		int dead_node = -1;
 		for(int i=0 ; i < info.node_list_.size();++i){
-		
-			std::string message = "LEADER;" + info.log_.serialize() ;
+			std::string message = "LEADER;" + std::to_string(info.term_) + ";" + info.log_.serialize();
+			info.log_.st_cnt_ = info.log_.size();
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ || info.node_list_[i].port_ != info.cur_.port_){
 				//std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
-				std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	
-				t.detach();
+				try{
+					f_wrapper(message,info.node_list_[i].ip_addr_,std::stoi(info.node_list_[i].port_));
+				}catch(std::runtime_error& e){
+					std::cout << "Thread timeout\n";
+					dead_node = i;
+				}
+				//std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	
+				//t.detach();
 			}
+
+
+		}
+		if(dead_node != -1){
+			info.node_list_.erase(info.node_list_.begin() + dead_node);
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(HB_FREQ));
 	}
@@ -245,13 +301,13 @@ void start_raft(){
 	
 	info.leader_tout_ = true;
 	int sleep_amt = LOWER_TIMEOUT + (rand() % (UPPER_TIMEOUT - LOWER_TIMEOUT));
-	std::cout << "Sleeping for " << sleep_amt << "milliseconds \n";
+	//std::cout << "Sleeping for " << sleep_amt << "milliseconds \n";
 	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_amt));
-	std::cout << "here1\n";
+	//std::cout << "here1\n";
 	if(info.node_list_.size() >= NODE_THRESHOLD && info.leader_tout_ == true){
 		info.vote_m_.lock();
 		if(info.vote_available_ == true){
-			std::cout << "here2\n";
+			//std::cout << "here2\n";
 			info.vote_available_ = false;
 			info.vote_m_.unlock();
 			start_election();

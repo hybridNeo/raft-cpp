@@ -1,7 +1,7 @@
 #include <string>
 #include <vector>
 #include <boost/algorithm/string.hpp>
-
+#include <iostream>
 
 #define LOWER_TIMEOUT 800
 #define UPPER_TIMEOUT 2000
@@ -16,6 +16,8 @@ void start_election();
 #define GET 10111
 #define SET 10112
 
+
+
 class log_entry{
 public:
 	int req_type_;
@@ -29,8 +31,13 @@ public:
 	}
 
 	log_entry(std::string in){
-		log_entry(deserialize(in));
-	}
+		std::vector<std::string> vs1;
+   	 	boost::split(vs1, in , boost::is_any_of(","));
+   	 	req_type_ = std::stoi(vs1[0]);
+   	 	key_ = (vs1[1]);
+   	 	val_ = (vs1[2]);
+   	 	committed_ = std::stoi(vs1[3]);
+   	 }
 
 	log_entry(const log_entry& l){
 		req_type_ = l.req_type_;
@@ -45,28 +52,49 @@ public:
 		return res;
 	}
 
-	log_entry deserialize(std::string in){
-		std::vector<std::string> vs1;
-   	 	boost::split(vs1, in , boost::is_any_of(","));
-   	 	log_entry temp(std::stoi(vs1[0]),vs1[1],vs1[2]);
-   	 	return temp;
-	}
 };
 
 class log_t : public std::vector<log_entry>{
+	public:
 	int cmt_cnt_;
 	int st_cnt_;
-	public:
 	log_t() : std::vector<log_entry>() {
 		st_cnt_ = 0;
 		cmt_cnt_ = 0;
 	}
+
+	log_t(std::string in): std::vector<log_entry>()  {
+		std::vector<std::string> vs1;
+   	 	boost::split(vs1, in , boost::is_any_of(";"));
+   	 	st_cnt_ = std::stoi(vs1[0]);
+   	 	cmt_cnt_ = std::stoi(vs1[1]);
+   	 	for(int i=2;i < vs1.size()-1; ++i){
+   	 		log_entry e(vs1[i]);
+   	 		std::vector<log_entry>::push_back(e);;
+   	 	}
+
+	
+	}
+
+
 	std::string serialize(){
 		std::string res = std::to_string(st_cnt_) + ";" + std::to_string(cmt_cnt_) + ";" ;
 		for(int i=0; i < std::vector<log_entry>::size(); ++i){
-
 			res += std::vector<log_entry>::operator[](i).serialize()  + ";";
 		}
 		return res;
 	}
+
+
 };
+
+int max(int a , int b){
+	if( a > b)
+		return a;
+	return b;
+}
+
+bool execute_cmd(log_entry l){
+	std::cout << "Executing " << ((l.req_type_ == SET)? "SET" : "GET") << " " << l.key_ << " " << l.val_ << std::endl;
+	return true;
+}

@@ -94,7 +94,3 @@ int max(int a , int b){
 	return b;
 }
 
-bool execute_cmd(log_entry l){
-	std::cout << "Executing " << ((l.req_type_ == SET)? "SET" : "GET") << " " << l.key_ << " " << l.val_ << std::endl;
-	return true;
-}

@@ -86,6 +86,7 @@ public:
 	}
 }info;
 std::mutex info_m;
+bool execute_cmd( int i);
 
 void update_nodes(){
 	for(int i =0; i < info.node_list_.size()-1;++i){
@@ -172,14 +173,14 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
     		info.log_ = new_log;
     		if(info.log_.st_cnt_ > info.log_.cmt_cnt_){
     			//execute
-
-    		}else if(info.log_.st_cnt_ == info.log_.size()){
-
-    		}
-    		else{
-    			info.log_.st_cnt_ = info.log_.size();
+    			for(int i= info.log_.cmt_cnt_; i <= info.log_.st_cnt_;++i ){
+    				execute_cmd( i);
+    			}
+    			//info.log_.cmt_cnt_ = info.log_.st_cnt_;
+    			return "COMMIT";
     		}
     	}
+    	
     	
     }
   
@@ -271,9 +272,11 @@ void leader_fn(){
 	info.term_++;
 	while(1){
 		int dead_node = -1;
+		int count = 0;
+		std::string message = "LEADER;" + std::to_string(info.term_) + ";" + info.log_.serialize();
+		int ssize = info.log_.size();
 		for(int i=0 ; i < info.node_list_.size();++i){
-			std::string message = "LEADER;" + std::to_string(info.term_) + ";" + info.log_.serialize();
-			info.log_.st_cnt_ = info.log_.size();
+			
 			if(info.node_list_[i].ip_addr_ != info.cur_.ip_addr_ || info.node_list_[i].port_ != info.cur_.port_){
 				//std::cout << "Heartbeating " << info.node_list_[i].ip_addr_ + " : " << info.node_list_[i].port_ << "\n";
 				try{
@@ -281,12 +284,23 @@ void leader_fn(){
 				}catch(std::runtime_error& e){
 					std::cout << "Thread timeout\n";
 					dead_node = i;
+					count++;
 				}
+				
 				//std::thread t(send_heartbeat,message,info.node_list_[i].ip_addr_, std::stoi(info.node_list_[i].port_));	
 				//t.detach();
 			}
 
 
+		}
+		if(count < info.node_list_.size()/2){
+			if(info.log_.st_cnt_ > info.log_.cmt_cnt_){
+				for(int i=info.log_.cmt_cnt_; i <= info.log_.st_cnt_;++i ){
+					execute_cmd(i);
+					info.log_.cmt_cnt_++;
+				}
+			}
+			info.log_.st_cnt_ = ssize;
 		}
 		if(dead_node != -1){
 			info.node_list_.erase(info.node_list_.begin() + dead_node);
@@ -401,4 +415,12 @@ int main(int argc, char* argv[]){
 	}
 
 
+}
+
+
+bool execute_cmd( int i){
+	std::string type =  ((info.log_[i].req_type_ == SET) ? "SET" : "GET");
+	std::cout << "Executing " <<  type << " " << info.log_[i].key_ << " " << info.log_[i].val_ << std::endl;
+	info.log_[i].committed_ = true;
+	return true;
 }

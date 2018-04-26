@@ -161,14 +161,14 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
 
     }else if(vs1[0] == "LEADER"){
     	info.leader_tout_ = false;
-    	std::cout << "heartbeat recevied\n";
+    	//std::cout << "heartbeat recevied\n";
     	info.term_ = max(info.term_,std::stoi(vs1[1]));
     	if(info.term_ > std::stoi(vs1[1])){
     		//ignore packet
     		return "NOK";
     	}else{
     		std::string r_log = request.substr(vs1[0].size()+vs1[1].size() +2);
-    		std::cout << "rlog:" << r_log;
+    		//std::cout << "rlog:" << r_log;
     		log_t new_log(r_log);
     		info.log_ = new_log;
     		if(info.log_.st_cnt_ > info.log_.cmt_cnt_){
@@ -419,8 +419,15 @@ int main(int argc, char* argv[]){
 
 
 bool execute_cmd( int i){
-	std::string type =  ((info.log_[i].req_type_ == SET) ? "SET" : "GET");
-	std::cout << "Executing " <<  type << " " << info.log_[i].key_ << " " << info.log_[i].val_ << std::endl;
+	std::string type =  "";//((info.log_[i].req_type_ == SET) ? "SET" : "GET");
+	if(info.log_[i].req_type_ == SET){
+		type = "SET";
+	}else if(info.log_[i].req_type_ == GET){
+		type = "GET";
+	}
+	if(type != ""){
+		std::cout << "Executing " <<  type << " " << info.log_[i].key_ << " " << info.log_[i].val_ << std::endl;	
+	}
 	info.log_[i].committed_ = true;
 	return true;
 }

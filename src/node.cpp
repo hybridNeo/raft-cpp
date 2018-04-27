@@ -3,6 +3,7 @@
 #include <boost/asio.hpp>
 #include "com.hpp"
 #include <mutex>
+#include <condition_variable>
 #include "raft.hpp"
 #include <thread>
 #include <boost/algorithm/string.hpp>

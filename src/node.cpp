@@ -121,6 +121,7 @@ std::string api_handler(std::string& request, udp::endpoint r_ep){
     	log_entry l(SET,vs1[1],vs1[2]);
     	int id = info.log_.size();
     	info.log_.push_back(l);
+    	std::cout << "bhere 1\n";
     	while(info.log_[id].committed_ == false){
 
     	}
@@ -162,9 +163,10 @@ std::string heartbeat_handler(std::string& request, udp::endpoint r_ep){
 
     }else if(vs1[0] == "LEADER"){
     	info.leader_tout_ = false;
-    	//std::cout << "heartbeat recevied\n";
+    	std::cout << "heartbeat recevied\n" << request << std::endl;
     	info.term_ = max(info.term_,std::stoi(vs1[1]));
     	if(info.term_ > std::stoi(vs1[1])){
+    		std::cout << "Ignroed \n";
     		//ignore packet
     		return "NOK";
     	}else{
@@ -296,10 +298,12 @@ void leader_fn(){
 		}
 		if(count < info.node_list_.size()/2){
 			if(info.log_.st_cnt_ > info.log_.cmt_cnt_){
-				for(int i=info.log_.cmt_cnt_; i <= info.log_.st_cnt_;++i ){
+				for(int i=info.log_.cmt_cnt_; i < info.log_.st_cnt_;++i ){
+					std::cout << "bhere 2\n";
 					execute_cmd(i);
 					info.log_.cmt_cnt_++;
 				}
+
 			}
 			info.log_.st_cnt_ = ssize;
 		}
